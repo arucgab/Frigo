@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Le frigo</title>
+<style>
+  :root {
+    --bg: #eef2ef;
+    --card: #ffffff;
+    --ink: #1c2b23;
+    --ink-soft: #5b6b62;
+    --line: #dbe4de;
+    --fresh: #2f8f5b;
+    --fresh-bg: #e4f4ea;
+    --soon: #c98a1f;
+    --soon-bg: #fbf0dc;
+    --old: #c94f3f;
+    --old-bg: #fbe6e2;
+    --accent: #1f6f4a;
+  }
+  * { box-sizing: border-box; }
+  body, #root {
+    font-family: "Iowan Old Style", "Palatino Linotype", Georgia, serif;
+    background: var(--bg);
+    color: var(--ink);
+    margin: 0;
+    min-height: 100%;
+  }
+  .wrap { max-width: 480px; margin: 0 auto; padding: 28px 18px 60px; }
+  header { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 4px; }
+  h1 { font-size: 26px; letter-spacing: 0.2px; margin: 0; font-weight: 700; color: var(--accent); }
+  .sub { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; font-size: 12.5px; color: var(--ink-soft); margin: 2px 0 22px; }
+  form.add { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 16px; margin-bottom: 26px; box-shadow: 0 1px 2px rgba(28,43,35,0.04); }
+  .row { display: flex; gap: 10px; }
+  label { display: block; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; font-size: 11px; text-transform: uppercase; letter-spacing: 0.6px; color: var(--ink-soft); margin-bottom: 5px; }
+  input[type="text"], input[type="number"] { width: 100%; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; font-size: 15px; padding: 10px 11px; border: 1px solid var(--line); border-radius: 9px; background: #fbfcfb; color: var(--ink); }
+  input:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
+  .field-desc { flex: 3; }
+  .field-portions { flex: 1; min-width: 78px; }
+  button.submit { margin-top: 12px; width: 100%; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; font-size: 14.5px; font-weight: 600; letter-spacing: 0.2px; padding: 11px; border: none; border-radius: 9px; background: var(--accent); color: white; cursor: pointer; }
+  button.submit:active { opacity: 0.85; }
+  button.submit:disabled { opacity: 0.5; cursor: default; }
+  .section-label { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; font-size: 11px; text-transform: uppercase; letter-spacing: 0.6px; color: var(--ink-soft); margin: 0 2px 10px; }
+  ul.items { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
+  li.item { display: flex; align-items: center; gap: 12px; background: var(--card); border: 1px solid var(--line); border-left: 5px solid var(--fresh); border-radius: 12px; padding: 13px 14px; }
+  li.item.soon { border-left-color: var(--soon); }
+  li.item.old { border-left-color: var(--old); }
+  .item-main { flex: 1; min-width: 0; }
+  .item-desc { font-size: 16px; font-weight: 600; color: var(--ink); overflow-wrap: anywhere; }
+  .item-meta { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; font-size: 12.5px; color: var(--ink-soft); margin-top: 3px; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .pill { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 999px; background: var(--fresh-bg); color: var(--fresh); }
+  li.item.soon .pill { background: var(--soon-bg); color: var(--soon); }
+  li.item.old .pill { background: var(--old-bg); color: var(--old); }
+  .portions { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; font-size: 13px; color: var(--ink-soft); white-space: nowrap; }
+  button.remove { flex-shrink: 0; width: 34px; height: 34px; border-radius: 50%; border: 1px solid var(--line); background: #fbfcfb; color: var(--ink-soft); font-size: 16px; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+  button.remove:active { background: var(--old-bg); color: var(--old); }
+  .empty { text-align: center; padding: 40px 10px; color: var(--ink-soft); font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; font-size: 14px; }
+  .status { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; font-size: 12.5px; color: var(--ink-soft); text-align: center; padding: 20px; }
+  .error-banner { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; font-size: 12.5px; background: var(--old-bg); color: var(--old); border-radius: 9px; padding: 9px 12px; margin-bottom: 14px; }
+</style>
+</head>
+<body>
+<div id="root"></div>
+
+<script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+<script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+<script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+<script type="text/babel">
+// ==========================================================
+// COLLEZ VOS DEUX VALEURS SUPABASE ICI (étape 3 du guide) :
+const SUPABASE_URL = "sb_publishable_M3rpBlTd5uBiw2CVj9Uzpg_wFLEEeGY";
+const SUPABASE_ANON_KEY = "sb_secret_xEuPHJ7keywFr9YumQRKGg_bz_xkmOT";
+// ==========================================================
+
+const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+const { useState, useEffect, useCallback } = React;
+
+function daysSince(iso) {
+  const then = new Date(iso).getTime();
+  const now = Date.now();
+  return Math.floor((now - then) / (1000 * 60 * 60 * 24));
+}
+
+function freshnessClass(days) {
+  if (days >= 6) return "old";
+  if (days >= 3) return "soon";
+  return "fresh";
+}
+
+function freshnessLabel(days) {
+  if (days === 0) return "Ajouté aujourd'hui";
+  if (days === 1) return "Ajouté hier";
+  return `Ajouté il y a ${days} jours`;
+}
+
+function formatDate(iso) {
+  const d = new Date(iso);
+  return d.toLocaleDateString("fr-FR", { day: "numeric", month: "short" });
+}
+
+function App() {
+  const [items, setItems] = useState(null);
+  const [error, setError] = useState(null);
+  const [desc, setDesc] = useState("");
+  const [portions, setPortions] = useState("");
+  const [saving, setSaving] = useState(false);
+
+  const load = useCallback(async () => {
+    const { data, error: err } = await supabase
+      .from("items")
+      .select("*")
+      .order("date", { ascending: true });
+    if (err) {
+      setError("Impossible de charger l'inventaire. Vérifiez la configuration Supabase.");
+      setItems([]);
+      return;
+    }
+    setError(null);
+    setItems(data);
+  }, []);
+
+  useEffect(() => { load(); }, [load]);
+
+  const handleAdd = async (e) => {
+    e.preventDefault();
+    const trimmed = desc.trim();
+    const n = parseInt(portions, 10);
+    if (!trimmed || !n || n < 1) return;
+    setSaving(true);
+    const { error: err } = await supabase.from("items").insert({
+      id: Date.now().toString(36) + Math.random().toString(36).slice(2, 7),
+      description: trimmed,
+      portions: n,
+      date: new Date().toISOString(),
+    });
+    if (err) {
+      setError("L'ajout a échoué. Réessayez.");
+    } else {
+      setDesc("");
+      setPortions("");
+      await load();
+    }
+    setSaving(false);
+  };
+
+  const handleRemove = async (id) => {
+    const { error: err } = await supabase.from("items").delete().eq("id", id);
+    if (err) {
+      setError("La suppression a échoué. Réessayez.");
+    } else {
+      await load();
+    }
+  };
+
+  return (
+    <div className="wrap">
+      <header>
+        <h1>Le frigo</h1>
+      </header>
+      <p className="sub">Inventaire partagé — visible et modifiable par toute personne qui touche ce tag.</p>
+
+      {error && <div className="error-banner">{error}</div>}
+
+      <form className="add" onSubmit={handleAdd}>
+        <div className="row">
+          <div className="field-desc">
+            <label htmlFor="desc">Plat</label>
+            <input
+              id="desc"
+              type="text"
+              placeholder="ex. Poulet au curry"
+              value={desc}
+              onChange={(e) => setDesc(e.target.value)}
+              maxLength={120}
+            />
+          </div>
+          <div className="field-portions">
+            <label htmlFor="portions">Portions</label>
+            <input
+              id="portions"
+              type="number"
+              min="1"
+              step="1"
+              placeholder="2"
+              value={portions}
+              onChange={(e) => setPortions(e.target.value)}
+            />
+          </div>
+        </div>
+        <button className="submit" type="submit" disabled={saving || !desc.trim() || !portions}>
+          {saving ? "Ajout…" : "Ajouter au frigo"}
+        </button>
+      </form>
+
+      {items === null && <div className="status">Chargement de l'inventaire…</div>}
+
+      {items !== null && items.length === 0 && (
+        <div className="empty">Le frigo est vide pour l'instant.<br />Ajoutez le premier plat ci-dessus.</div>
+      )}
+
+      {items !== null && items.length > 0 && (
+        <>
+          <p className="section-label">{items.length} plat{items.length > 1 ? "s" : ""} au frigo</p>
+          <ul className="items">
+            {items.map((it) => {
+              const days = daysSince(it.date);
+              const cls = freshnessClass(days);
+              return (
+                <li className={`item ${cls}`} key={it.id}>
+                  <div className="item-main">
+                    <div className="item-desc">{it.description}</div>
+                    <div className="item-meta">
+                      <span className="pill">{freshnessLabel(days)}</span>
+                      <span>{formatDate(it.date)}</span>
+                    </div>
+                  </div>
+                  <div className="portions">{it.portions} portion{it.portions > 1 ? "s" : ""}</div>
+                  <button className="remove" onClick={() => handleRemove(it.id)} aria-label={`Retirer ${it.description}`}>
+                    ✕
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
+        </>
+      )}
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+</script>
+</body>
+</html>
