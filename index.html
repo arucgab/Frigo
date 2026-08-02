@@ -52,7 +52,7 @@
   .pill { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 999px; background: var(--fresh-bg); color: var(--fresh); }
   li.item.soon .pill { background: var(--soon-bg); color: var(--soon); }
   li.item.old .pill { background: var(--old-bg); color: var(--old); }
-  .portions { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; font-size: 13px; color: var(--ink-soft); white-space: nowrap; }
+  .batch-pill { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 999px; background: #eef2ef; color: var(--ink-soft); border: 1px solid var(--line); }
   button.remove { flex-shrink: 0; width: 34px; height: 34px; border-radius: 50%; border: 1px solid var(--line); background: #fbfcfb; color: var(--ink-soft); font-size: 16px; cursor: pointer; display: flex; align-items: center; justify-content: center; }
   button.remove:active { background: var(--old-bg); color: var(--old); }
   .empty { text-align: center; padding: 40px 10px; color: var(--ink-soft); font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; font-size: 14px; }
@@ -70,7 +70,7 @@
 
 <script type="text/babel">
 // ==========================================================
-// COLLEZ VOS DEUX VALEURS SUPABASE ICI (étape 3 du guide) :
+// COLLEZ VOS DEUX VALEURS SUPABASE ICI :
 const SUPABASE_URL = "https://mohkdxjvjzbjwjlwbhim.supabase.co";
 const SUPABASE_ANON_KEY = "sb_publishable_M3rpBlTd5uBiw2CVj9Uzpg_wFLEEeGY";
 // ==========================================================
@@ -102,6 +102,18 @@ function formatDate(iso) {
   return d.toLocaleDateString("fr-FR", { day: "numeric", month: "short" });
 }
 
+function weeksLabel(days) {
+  const weeks = Math.floor(days / 7);
+  return `${weeks} semaine${weeks > 1 ? "s" : ""}`;
+}
+
+// Extrait le numéro de séquence encodé à la fin de l'id (ex: "abc123-2" -> 2)
+function seqFromId(id) {
+  const parts = id.split("-");
+  const last = parseInt(parts[parts.length - 1], 10);
+  return Number.isNaN(last) ? 0 : last;
+}
+
 function App() {
   const [items, setItems] = useState(null);
   const [error, setError] = useState(null);
@@ -131,12 +143,18 @@ function App() {
     const n = parseInt(portions, 10);
     if (!trimmed || !n || n < 1) return;
     setSaving(true);
-    const { error: err } = await supabase.from("items").insert({
-      id: Date.now().toString(36) + Math.random().toString(36).slice(2, 7),
+
+    const batchId = Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+    const now = new Date().toISOString();
+    const rows = Array.from({ length: n }, (_, i) => ({
+      id: `${batchId}-${i}`,
       description: trimmed,
-      portions: n,
-      date: new Date().toISOString(),
-    });
+      portions: 1,
+      date: now,
+      batch_id: batchId,
+    }));
+
+    const { error: err } = await supabase.from("items").insert(rows);
     if (err) {
       setError("L'ajout a échoué. Réessayez.");
     } else {
@@ -155,6 +173,14 @@ function App() {
       await load();
     }
   };
+
+  // Compte le nombre de portions restantes par lot, pour l'affichage "x/N"
+  const batchTotals = {};
+  (items || []).forEach((it) => {
+    if (it.batch_id) {
+      batchTotals[it.batch_id] = (batchTotals[it.batch_id] || 0) + 1;
+    }
+  });
 
   return (
     <div className="wrap">
@@ -204,21 +230,23 @@ function App() {
 
       {items !== null && items.length > 0 && (
         <>
-          <p className="section-label">{items.length} plat{items.length > 1 ? "s" : ""} au frigo</p>
+          <p className="section-label">{items.length} portion{items.length > 1 ? "s" : ""} au frigo</p>
           <ul className="items">
             {items.map((it) => {
               const days = daysSince(it.date);
               const cls = freshnessClass(days);
+              const total = it.batch_id ? batchTotals[it.batch_id] : 1;
+              const seq = it.batch_id ? seqFromId(it.id) + 1 : 1;
               return (
                 <li className={`item ${cls}`} key={it.id}>
                   <div className="item-main">
                     <div className="item-desc">{it.description}</div>
                     <div className="item-meta">
                       <span className="pill">{freshnessLabel(days)}</span>
-                      <span>{formatDate(it.date)}</span>
+                      {total > 1 && <span className="batch-pill">Portion {seq}/{total}</span>}
+                      <span>{formatDate(it.date)} ({weeksLabel(days)})</span>
                     </div>
                   </div>
-                  <div className="portions">{it.portions} portion{it.portions > 1 ? "s" : ""}</div>
                   <button className="remove" onClick={() => handleRemove(it.id)} aria-label={`Retirer ${it.description}`}>
                     ✕
                   </button>
